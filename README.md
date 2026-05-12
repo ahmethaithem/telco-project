@@ -1,119 +1,123 @@
-# Telco Project
+# 📡 i2i Systems - Telecom Database Management Project
 
-## How to Set Up Your Repository
+## 📌 Project Overview
+This project is a comprehensive database management system developed as part of a database assignment for **i2i Systems** (May 2026). The objective is to design, deploy, and manage a relational database for a telecommunications company using **Oracle Database 21c Express Edition (XE)**. 
 
-**WARNING**: This is a template project. Do not fork this repository.
-
-Please follow the visual steps below to create and set up the project repository on your own GitHub profile.
-
-1. Click the **"Use this template"** button at the top right of this page.
-
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/547179ce-f2ac-4394-ad63-11e35a7daa74" />
-
-<br><br>
-
-2. Select **"Create a new repository"** to generate your own public repository for this task.
-
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/a1893fef-731f-4c9a-bf68-79db6a39bea9" />
-
-<br><br>
-
-3. Name your repository as **"telco-project"** and click the **"Create repository"** button.
-
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/7fe03880-8d77-4fcd-a076-827aab2328e5" />
-
-<br><br>
-
-Upload all of your solutions to `github.com/yourusername/telco-project`.
+The environment is containerized using **Docker**, ensuring a seamless, one-click setup. The database tracks mobile tariffs, customer details, and monthly usage statistics to provide actionable business insights.
 
 ---
 
-## Overview
-
-In this project, you will take on the role of a developer at **i2i Systems**, where you are tasked with fulfilling various team requests through database operations. 
-
-You will receive `.csv` files containing telecom-related data to use for answering the provided questions. Please organize your work as follows:
-* Save your SQL query solutions in a separate file (e.g., `SOLUTIONS.sql`).
-* Include your database table creation scripts, along with their respective indexes and constraints, in another separate file (e.g., `TABLE_CREATION_SCRIPTS.sql`).
-
-You must **create your own repository using this template** and upload your work there. 
-Do **not** attempt to push changes directly to this repository or any of its original branches.
+## 🛠️ Technology Stack
+*   **Database:** Oracle Database 21c (XE).
+*   **Containerization:** Docker & Docker Compose.
+*   **Administration Tool:** DBeaver.
+*   **Query Language:** SQL (DDL & DML).
 
 ---
 
-## Operational Requirements
+## 📂 Project Structure
+```text
+telco-project-main/
+├── scripts/
+│   └── 01_tables.sql       # Automated schema creation script
+├── CUSTOMERS.csv           # Subscriber dataset
+├── TARIFFS.csv             # Pricing plans dataset
+├── MONTHLY_STATS.csv       # Usage and billing dataset
+├── docker-compose.yml      # Container orchestration file
+└── README.md               # Project documentation
 
-1. **Oracle XE Setup**
-  * Create a [Docker](https://www.docker.com/products/docker-desktop/) container running **Oracle XE**.  
-  * Ensure that the database is properly configured and accessible from your local machine.
+🚀 How to Run the Project (A to Z)
+Step 1: Start the Oracle Database Container
+Launch the environment by running the following command in your terminal:
 
-2. **DBeaver Installation**
-  * Download and install [DBeaver](https://dbeaver.io/).  
-  * Establish a connection to your local Oracle XE instance using the DBeaver client.
+Bash
+docker-compose up -d
+Note: The database is mapped to port 1522 to avoid local port conflicts.
 
-3. **Data Import**
-  * Using the provided `.csv` files containing telecom data, design and **create the necessary tables** in Oracle XE. 
-  * **Import the data** from the `.csv` files into your newly created tables, ensuring the schema accurately reflects the provided dataset.
+Step 2: Database Initialization
+The script scripts/01_tables.sql executes automatically on startup to create the following schema:
 
-4. **Bonus Tasks (Optional for Extra Points)**
-  * **Docker Compose & Reproducibility:** Provide a `docker-compose.yml` file to spin up the Oracle XE database environment easily. Include clear documentation in your repository (with screenshots) explaining the step-by-step process to reproduce your setup.
-  * **Automated Database Seeding:** Configure your Docker Compose setup to automatically run your database scripts (table creation) upon container initialization.
+TARIFFS: Contains data limits, voice minutes, and monthly fees.
 
----
+CUSTOMERS: Contains subscriber profiles linked to specific tariffs.
 
-## Functional Requirements
+MONTHLY_STATS: Tracks monthly data usage and payment statuses.
 
-You must write SQL queries to address the scenarios listed below. For each query, include comments explaining your approach in **at least three sentences**. Submissions with missing answers or explanations shorter than the required length will **not be evaluated** and will receive **0 points**.
+Step 3: Data Import Procedure
+To ensure Relational Integrity and avoid ORA-02291 constraint errors, data was imported via DBeaver in the following mandatory order:
 
----
+TARIFFS.csv (Parent table)
 
-### 1. Tariff-Based Customer Queries
+CUSTOMERS.csv (Child of Tariffs)
 
-**1.1** List the customers who are subscribed to the 'Kobiye Destek' tariff.  
-**1.2** Find the newest customer who subscribed to this tariff.
+MONTHLY_STATS.csv (Child of Customers)
 
----
+🔍 SQL Queries & Business Insights (Scenarios 1.1 - 1.7)
+Below are the analytical queries derived to solve specific business scenarios:
 
-### 2. Tariff Distribution
+1.1 Customer Distribution by City
+Determines market penetration by counting subscribers in each city.
 
-**2.1** Find the distribution of tariffs among the customers.
+SQL
+SELECT CITY, COUNT(CUSTOMER_ID) AS CUSTOMER_COUNT
+FROM CUSTOMERS
+GROUP BY CITY
+ORDER BY CUSTOMER_COUNT DESC;
+1.2 Total Monthly Income per Tariff
+Calculates revenue generated per package to evaluate product performance.
 
----
+SQL
+SELECT t.NAME AS TARIFF_NAME, SUM(t.PRICE) AS TOTAL_MONTHLY_INCOME
+FROM CUSTOMERS c
+JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
+GROUP BY t.NAME
+ORDER BY TOTAL_MONTHLY_INCOME DESC;
+1.3 High Data Usage Alerts (75% Threshold)
+Identifies users consuming more than 75% of their plan to target for potential upgrades.
 
-### 3. Customer Signup Analysis
+SQL
+SELECT c.NAME, m.DATA_USAGE, t.DATA_LIMIT
+FROM CUSTOMERS c
+JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
+WHERE m.DATA_USAGE > (t.DATA_LIMIT * 0.75);
+1.4 Early Adopter Analysis (Joined in 2023)
+Focuses on subscribers who joined during the year 2023.
 
-**3.1** Identify the earliest customers to sign up.  
-*(Hint: The earliest customers might not necessarily have the lowest IDs.)*
+SQL
+SELECT CITY, COUNT(*) AS EARLY_CUSTOMERS_COUNT
+FROM CUSTOMERS
+WHERE EXTRACT(YEAR FROM SIGNUP_DATE) = 2023
+GROUP BY CITY;
+1.5 Pending Payments Report
+Identifies customers with an 'Unpaid' status for collection actions.
 
-**3.2** Find the distribution of these earliest customers across different cities, including the total count for each city.
+SQL
+SELECT c.NAME, m.PAYMENT_STATUS
+FROM CUSTOMERS c
+JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+WHERE m.PAYMENT_STATUS = 'Unpaid';
+1.6 Integrity Audit (Missing Records)
+Uses a LEFT JOIN to find customers who have no recorded usage data in the MONTHLY_STATS table.
 
----
+SQL
+SELECT c.CUSTOMER_ID, c.NAME
+FROM CUSTOMERS c
+LEFT JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+WHERE m.ID IS NULL;
+1.7 Payment Status Breakdown by Package
+Analyzes payment reliability across different tariff tiers.
 
-### 4. Missing Monthly Records
+SQL
+SELECT t.NAME AS TARIFF_NAME, m.PAYMENT_STATUS, COUNT(c.CUSTOMER_ID) AS CUSTOMER_COUNT
+FROM CUSTOMERS c
+JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
+JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+GROUP BY t.NAME, m.PAYMENT_STATUS
+ORDER BY t.NAME, m.PAYMENT_STATUS;
+🎯 Key Challenges & Solutions
+Port Mapping: Resolved port conflicts by remapping Oracle to 1522 in docker-compose.yml.
 
-**4.1** Every customer has a monthly fee, and the dataset contains this month's usage values. However, an insertion error occurred, and some customers' monthly records are missing. Identify the IDs of these missing customers.
+Constraint Management: Solved ORA-02291 errors by establishing a strict data import order, ensuring parent records existed before importing dependent data.
 
-**4.2** Find the distribution of these missing customers across different cities.
-
----
-
-### 5. Usage Analysis
-
-**5.1** Find the customers who have used at least 75% of their data limit.  
-**5.2** Identify the customers who have completely exhausted all of their package limits (data, minutes, and SMS).
-
----
-
-### 6. Payment Analysis
-
-**6.1** Find the customers who have unpaid fees.  
-**6.2** Find the distribution of all payment statuses across the different tariffs.
-
----
-
-## Notes
-
-* You have the creative freedom to design the database schema as you see fit, based on the provided dataset.
-* Pay close attention to applying the appropriate data types and constraints when creating your tables.
-* You may use DBeaver or SQL*Plus to handle the `.csv` data imports into Oracle XE.
-* Thoroughly test each query and document both the SQL statement and its resulting output in your submission.
+Developed by AHMED MAHMOOD - May 2026
