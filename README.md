@@ -1,74 +1,39 @@
 # 📡 i2i Systems — Telecom Database Management Project
 
 > **Database Assignment | May 2026**
-> Designed, deployed, and managed by **Ahmed Mahmood**
+> Developed by **Ahmed Haithem**
 
 ---
 
 ## 📌 Project Overview
 
-A comprehensive relational database system built for a telecommunications company using **Oracle Database 21c Express Edition (XE)**. The environment is containerized with Docker for seamless one-click setup.
-
-The database tracks:
-- 📋 Mobile tariffs & pricing plans
-- 👥 Customer profiles & subscriptions
-- 📊 Monthly usage statistics & billing
+A relational database system designed and managed for a telecommunications company using **Oracle Database 21c (XE)**. The environment is containerized via **Docker Compose** for easy reproducibility.
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Setup & Reproducibility
 
-| Tool | Purpose |
-|------|---------|
-| **Oracle Database 21c XE** | Core relational database engine |
-| **Docker & Docker Compose** | Containerization & environment setup |
-| **DBeaver** | Database administration & data import |
-| **SQL (DDL & DML)** | Schema creation & data queries |
+### 1. Docker XE Setup
 
----
-
-## 📂 Project Structure
-
-```
-telco-project-main/
-├── scripts/
-│   └── 01_tables.sql       # Automated schema creation script
-├── CUSTOMERS.csv           # Subscriber dataset
-├── TARIFFS.csv             # Pricing plans dataset
-├── MONTHLY_STATS.csv       # Usage and billing dataset
-├── docker-compose.yml      # Container orchestration file
-└── README.md               # Project documentation
-```
-
----
-
-## 🚀 How to Run the Project
-
-### Step 1 — Start the Oracle Database Container
+The database runs in a Docker container using the provided `docker-compose.yml`.
 
 ```bash
 docker-compose up -d
 ```
 
-> **Note:** The database is mapped to port **1522** to avoid local port conflicts.
+> **Note:** Mapped to port **1522** to avoid local conflicts.
 
 ---
 
-### Step 2 — Database Initialization
+### 2. Automated Initialization
 
-The script `scripts/01_tables.sql` executes **automatically on startup** and creates the following tables:
-
-| Table | Description |
-|-------|-------------|
-| `TARIFFS` | Data limits, voice minutes, and monthly fees |
-| `CUSTOMERS` | Subscriber profiles linked to specific tariffs |
-| `MONTHLY_STATS` | Monthly data usage and payment statuses |
+The system automatically runs `scripts/01_tables.sql` upon container startup to create the full schema.
 
 ---
 
-### Step 3 — Data Import Order ⚠️
+### 3. Data Import (DBeaver)
 
-To maintain **Relational Integrity** and avoid `ORA-02291` constraint errors, import data in this **mandatory order** via DBeaver:
+Data from the CSV files was imported using **DBeaver** in the following mandatory order to maintain referential integrity:
 
 ```
 1. TARIFFS.csv        ← Parent table (import first)
@@ -78,65 +43,151 @@ To maintain **Relational Integrity** and avoid `ORA-02291` constraint errors, im
 
 ---
 
-## 🔍 SQL Queries & Business Insights
-
-### 1.1 — Customer Distribution by City
-
-Determines market penetration by counting subscribers per city.
-
-```sql
-SELECT CITY, COUNT(CUSTOMER_ID) AS CUSTOMER_COUNT
-FROM CUSTOMERS
-GROUP BY CITY
-ORDER BY CUSTOMER_COUNT DESC;
-```
+## 🔍 Functional Requirements & SQL Queries
 
 ---
 
-### 1.2 — Total Monthly Income per Tariff
+### 1. Tariff-Based Customer Queries
 
-Calculates revenue generated per package to evaluate product performance.
+#### 1.1 — Customers in 'Kobiye Destek' Tariff
+
+> Performs a join between customers and tariffs tables, filtering for the 'Kobiye Destek' package. Allows the business to identify the exact user base for this specific service plan.
 
 ```sql
-SELECT t.NAME AS TARIFF_NAME, SUM(t.PRICE) AS TOTAL_MONTHLY_INCOME
+SELECT c.*
 FROM CUSTOMERS c
 JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
-GROUP BY t.NAME
-ORDER BY TOTAL_MONTHLY_INCOME DESC;
+WHERE t.NAME = 'Kobiye Destek';
 ```
 
 ---
 
-### 1.3 — High Data Usage Alerts (75% Threshold)
+#### 1.2 — Newest Customer in 'Kobiye Destek'
 
-Identifies users consuming more than 75% of their data plan — targets for upgrade offers.
+> Sorts the filtered customer list by signup date in descending order, then isolates the single most recent addition. Useful for tracking recent marketing campaign successes.
+
+```sql
+SELECT *
+FROM (
+    SELECT c.*
+    FROM CUSTOMERS c
+    JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
+    WHERE t.NAME = 'Kobiye Destek'
+    ORDER BY c.SIGNUP_DATE DESC
+)
+WHERE ROWNUM = 1;
+```
+
+---
+
+### 2. Tariff Distribution
+
+#### 2.1 — Distribution of Tariffs Among Customers
+
+> Groups subscriber data by tariff name and calculates the total count per plan. Helps management understand which packages are most popular in the market.
+
+```sql
+SELECT t.NAME, COUNT(c.CUSTOMER_ID) AS TOTAL_CUSTOMERS
+FROM TARIFFS t
+LEFT JOIN CUSTOMERS c ON t.TARIFF_ID = c.TARIFF_ID
+GROUP BY t.NAME;
+```
+
+---
+
+### 3. Customer Signup Analysis
+
+#### 3.1 — Earliest Customers to Sign Up
+
+> Sorts by signup date (not ID) to find the true first users in chronological order — avoids errors where IDs might not reflect the actual order of joining.
+
+```sql
+SELECT *
+FROM CUSTOMERS
+ORDER BY SIGNUP_DATE ASC;
+```
+
+---
+
+#### 3.2 — Distribution of Earliest Customers by City
+
+> Aggregates the earliest customers by city to show where initial company growth started. Provides geographic insight vital for historical trend analysis.
+
+```sql
+SELECT CITY, COUNT(*) AS CUSTOMER_COUNT
+FROM CUSTOMERS
+WHERE SIGNUP_DATE = (SELECT MIN(SIGNUP_DATE) FROM CUSTOMERS)
+GROUP BY CITY;
+```
+
+---
+
+### 4. Missing Monthly Records
+
+#### 4.1 — Identify IDs of Missing Customers
+
+> Uses a `LEFT JOIN` between customers and monthly usage tables. Filtering for `NULL` usage records exposes users affected by insertion errors — serves as an audit tool for data completeness.
+
+```sql
+SELECT c.CUSTOMER_ID
+FROM CUSTOMERS c
+LEFT JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+WHERE m.ID IS NULL;
+```
+
+---
+
+#### 4.2 — Distribution of Missing Customers by City
+
+> Counts customers with missing records grouped by city. Determines if the error was localized to a specific region and highlights areas requiring immediate data recovery.
+
+```sql
+SELECT c.CITY, COUNT(c.CUSTOMER_ID) AS MISSING_COUNT
+FROM CUSTOMERS c
+LEFT JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+WHERE m.ID IS NULL
+GROUP BY c.CITY;
+```
+
+---
+
+### 5. Usage Analysis
+
+#### 5.1 — Customers Using at Least 75% of Data Limit
+
+> Calculates the ratio between current usage and the allocated limit, filtering for values ≥ 0.75. Enables proactive customer support to offer package upgrades to heavy users.
 
 ```sql
 SELECT c.NAME, m.DATA_USAGE, t.DATA_LIMIT
 FROM CUSTOMERS c
 JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
 JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
-WHERE m.DATA_USAGE > (t.DATA_LIMIT * 0.75);
+WHERE m.DATA_USAGE >= (t.DATA_LIMIT * 0.75);
 ```
 
 ---
 
-### 1.4 — Early Adopter Analysis (Joined in 2023)
+#### 5.2 — Customers Exhausting All Limits (Data, Minutes, SMS)
 
-Focuses on subscribers who joined during the year 2023.
+> Checks three usage conditions simultaneously to find users who have reached or surpassed all caps. Identifying these "power users" is essential for capacity planning and revenue management.
 
 ```sql
-SELECT CITY, COUNT(*) AS EARLY_CUSTOMERS_COUNT
-FROM CUSTOMERS
-WHERE EXTRACT(YEAR FROM SIGNUP_DATE) = 2023
-GROUP BY CITY;
+SELECT c.NAME
+FROM CUSTOMERS c
+JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
+JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
+WHERE m.DATA_USAGE   >= t.DATA_LIMIT
+  AND m.MINUTE_USAGE >= t.MINUTE_LIMIT
+  AND m.SMS_USAGE    >= t.SMS_LIMIT;
 ```
 
 ---
 
-### 1.5 — Pending Payments Report
+### 6. Payment Analysis
 
-Identifies customers with an `Unpaid` status for collection actions.
+#### 6.1 — Customers with Unpaid Fees
+
+> Filters directly on the `PAYMENT_STATUS` column for the value `'Unpaid'`, generating a collection list for the billing department.
 
 ```sql
 SELECT c.NAME, m.PAYMENT_STATUS
@@ -147,43 +198,20 @@ WHERE m.PAYMENT_STATUS = 'Unpaid';
 
 ---
 
-### 1.6 — Integrity Audit (Missing Records)
+#### 6.2 — Distribution of Payment Statuses Across Tariffs
 
-Uses a `LEFT JOIN` to find customers with no recorded usage data in `MONTHLY_STATS`.
-
-```sql
-SELECT c.CUSTOMER_ID, c.NAME
-FROM CUSTOMERS c
-LEFT JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
-WHERE m.ID IS NULL;
-```
-
----
-
-### 1.7 — Payment Status Breakdown by Package
-
-Analyzes payment reliability across different tariff tiers.
+> Groups records by both tariff name and payment status. This multi-level aggregation reveals the financial health of each plan and identifies tariffs with higher rates of payment defaults.
 
 ```sql
-SELECT t.NAME AS TARIFF_NAME, m.PAYMENT_STATUS, COUNT(c.CUSTOMER_ID) AS CUSTOMER_COUNT
-FROM CUSTOMERS c
-JOIN TARIFFS t ON c.TARIFF_ID = t.TARIFF_ID
+SELECT t.NAME, m.PAYMENT_STATUS, COUNT(*) AS COUNT
+FROM TARIFFS t
+JOIN CUSTOMERS c ON t.TARIFF_ID = c.TARIFF_ID
 JOIN MONTHLY_STATS m ON c.CUSTOMER_ID = m.ID
-GROUP BY t.NAME, m.PAYMENT_STATUS
-ORDER BY t.NAME, m.PAYMENT_STATUS;
+GROUP BY t.NAME, m.PAYMENT_STATUS;
 ```
-
----
-
-## 🎯 Key Challenges & Solutions
-
-| Challenge | Solution |
-|-----------|----------|
-| **Port Conflict** | Remapped Oracle from default 1521 to port **1522** in `docker-compose.yml` |
-| **ORA-02291 Errors** | Established a strict import order ensuring parent records exist before dependent data |
 
 ---
 
 ## 👨‍💻 Author
 
-**Ahmed Mahmood** — May 2026
+**Ahmed Haithem** — May 2026
