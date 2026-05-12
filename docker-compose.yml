@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  oracle-db:
+    image: gvenzl/oracle-xe:latest
+    container_name: oracle_xe_i2i
+    ports:
+      - "1522:1521"
+    environment:
+      - ORACLE_PASSWORD=i2i_password
+      - APP_USER=i2i_user
+      - APP_USER_PASSWORD=i2i_password
+    volumes:
+      - ./scripts:/container-entrypoint-initdb.d/
+    restart: always
